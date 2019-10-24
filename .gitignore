@@ -2,4 +2,6 @@
 *~
 hosts*
 password-data
+kdc-data/etc/krb5.anonymous.keytab
+kdc-data/etc/krb5.tgt.keytab
 
