@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# kinit for users with 2FA. Need to get an anonymous credential and
+# use it to armor the cache.
+
+# also, kinit doesn't work well with KEYRING if KRB5CCNAME is set to a specific cache
+# in a keyring. It may overwrite the existing credentials, or just fail.
+
+# ANONCC will be used to armor
+
+ANONCC=KEYRING:session:`id -u`:$$
+
+KRB5CCNAME="$ANONCC" kgetcred -a >/dev/null
+
+# make sure we remove the cache where anonymous is put, if the user ^C's out
+
+trap 'KRB5CCNAME="$ANONCC" kdestroy' 2
+
+# the actual kinit
+kinit -T "$ANONCC" "$@" 
+
+KRB5CCNAME="$ANONCC" kdestroy
+

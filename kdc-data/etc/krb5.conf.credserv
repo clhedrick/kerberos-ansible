@@ -1,0 +1,8 @@
+[realms]
+  CS.RUTGERS.EDU = {
+     kdc = krb1.cs.rutgers.edu
+     kdc = krb2.cs.rutgers.edu
+     kdc = krb4.cs.rutgers.edu
+  }
+
+include /etc/krb5.conf

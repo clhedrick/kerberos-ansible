@@ -1,0 +1,82 @@
+---
+
+- hosts: krb1.cs.rutgers.edu krb2.cs.rutgers.edu krb4.cs.rutgers.edu
+
+  become: true
+  become_method: su
+  environment:
+    PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
+  tasks:
+
+   - name: check hostname
+     when: ansible_nodename is not match("krb.\.cs\.rutgers\.edu")
+     fail: msg="hostname must be krb?.cs.rutgers.edu"
+
+   - name: check idm:DL1
+     command: dnf -q module list --enabled idm:DL1
+# suppress warning about using dnf. the dnf ansible command can't do this
+     args:
+        warn: no
+     register: DL1installed
+     changed_when: false
+     check_mode: false
+     failed_when: false
+   - name: switch to DL1
+     when: DL1installed.rc != 0
+     block: 
+      - command: yum -y module enable idm:DL1
+      - command: yum -y distro-sync
+   - name: install server software
+     command: yum -y module install idm:DL1/server
+     args:
+       creates: /usr/sbin/ipa-replica-install
+   - name: disable selinux
+     lineinfile: path=/etc/selinux/config regexp="^SELINUX=" line="SELINUX=permissive"
+     notify: set permissive
+
+   - meta: flush_handlers
+
+   - name: nftables.staff
+     copy: src=kdc-data/etc/sysconfig/nftables.staff dest=/etc/sysconfig/nftables.staff owner=root mode=600
+     notify: restart nftables
+   - name: nftables.lcsr
+     copy: src=kdc-data/etc/sysconfig/nftables.lcsr dest=/etc/sysconfig/nftables.lcsr force=no owner=root mode=600
+   - name: nftables.conf
+     template: src=kdc-data/etc/sysconfig/nftables.conf dest=/etc/sysconfig/nftables.conf owner=root mode=600
+     notify: restart nftables
+   - name: disable firewalld
+     service: name=firewalld state=stopped enabled=no
+
+   - meta: flush_handlers
+   
+   - name: packages
+     package: name="tcsh,emacs,tcpdump,strace,lsof,krb5-workstation,rsync"
+   - name: chrony config
+     blockinfile: 
+       path: /etc/chrony.conf
+       block: |
+         server 128.6.1.1 iburst
+         initstepslew 30 128.6.1.1
+       insertbefore: BOF
+     notify: restart chrony
+   - name: chrony config
+     lineinfile: path=/etc/chrony.conf regexp="^pool" state=absent
+     notify: restart chrony
+
+# setup so krb2.yml can be done as a user
+   - name: setup pam_mkhomedir
+     lineinfile: path=/etc/pam.d/sshd insertafter="session.*pam_selinux.so" line="session    optional     pam_mkhomedir.so"
+   - name: sudoers
+     copy: src=kdc-data/etc/sudoers.d/lcsr dest=/etc/sudoers.d/lcsr owner=root mode=600
+
+   - name: reboot warning
+     when: DL1installed.rc != 0
+     debug: msg="please reboot the target host now"
+
+  handlers:
+   - name: restart nftables
+     service: name=nftables state=restarted enabled=yes
+   - name: restart chrony
+     service: name=chronyd state=restarted enabled=yes
+   - name: set permissive
+     command: setenforce Permissive

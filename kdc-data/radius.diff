@@ -1,0 +1,124 @@
+*** /etc/raddb/mods-available/ldap.orig	2019-10-17 14:31:35.091322681 -0400
+--- /etc/raddb/mods-available/ldap	2019-10-17 14:43:08.379058266 -0400
+***************
+*** 25,36 ****
+  
+  	#  Administrator account for searching and possibly modifying.
+  	#  If using SASL + KRB5 these should be commented out.
+! #	identity = 'cn=admin,dc=example,dc=org'
+! #	password = mypass
+  
+  	#  Unless overridden in another section, the dn from which all
+  	#  searches will start from.
+! 	base_dn = 'dc=example,dc=org'
+  
+  	#
+  	#  SASL parameters to use for admin binds
+--- 25,36 ----
+  
+  	#  Administrator account for searching and possibly modifying.
+  	#  If using SASL + KRB5 these should be commented out.
+! 	identity = 'uid=ldap.admin,cn=users,cn=accounts,dc=cs,dc=rutgers,dc=edu'
+! 	password = 'abcde12345!'
+  
+  	#  Unless overridden in another section, the dn from which all
+  	#  searches will start from.
+! 	base_dn = 'cn=accounts,dc=cs,dc=rutgers,dc=edu'
+  
+  	#
+  	#  SASL parameters to use for admin binds
+***************
+*** 116,121 ****
+--- 116,122 ----
+  #		reply:Tunnel-Type		:= 'radiusTunnelType'
+  #		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+  #		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
++                 reply:DellEMC-Group-Name := 'dellemcgroup'
+  
+  		#  Where only a list is specified as the RADIUS attribute,
+  		#  the value of the LDAP attribute is parsed as a valuepair
+***************
+*** 494,500 ****
+  		# The StartTLS operation is supposed to be
+  		# used with normal ldap connections instead of
+  		# using ldaps (port 636) connections
+! #		start_tls = yes
+  
+  #		ca_file	= ${certdir}/cacert.pem
+  
+--- 495,501 ----
+  		# The StartTLS operation is supposed to be
+  		# used with normal ldap connections instead of
+  		# using ldaps (port 636) connections
+! 		start_tls = yes
+  
+  #		ca_file	= ${certdir}/cacert.pem
+  
+***************
+*** 514,520 ****
+  		#  The default is libldap's default, which varies based
+  		#  on the contents of ldap.conf.
+  
+! #		require_cert	= 'demand'
+  	}
+  
+  	#  As of version 3.0, the 'pool' section has replaced the
+--- 515,521 ----
+  		#  The default is libldap's default, which varies based
+  		#  on the contents of ldap.conf.
+  
+! 		require_cert	= 'allow'
+  	}
+  
+  	#  As of version 3.0, the 'pool' section has replaced the
+*** /etc/raddb/sites-available/default.orig	2019-10-17 14:43:34.251160351 -0400
+--- /etc/raddb/sites-available/default	2019-10-17 14:46:47.010920931 -0400
+***************
+*** 435,440 ****
+--- 435,446 ----
+  	#
+  	pap
+  
++ if (User-Password) {
++     update control {
++     Auth-Type := ldap
++     }
++ }
++ 
+  	#
+  	#  If "status_server = yes", then Status-Server messages are passed
+  	#  through the following section, and ONLY the following section.
+***************
+*** 479,485 ****
+  	#  in the 'authorize' section supplies a password.  The
+  	#  password can be clear-text, or encrypted.
+  	Auth-Type PAP {
+! 		pap
+  	}
+  
+  	#
+--- 485,491 ----
+  	#  in the 'authorize' section supplies a password.  The
+  	#  password can be clear-text, or encrypted.
+  	Auth-Type PAP {
+! 		ldap
+  	}
+  
+  	#
+***************
+*** 524,530 ****
+  	#  LDAP servers do not.
+  	#
+  #	Auth-Type LDAP {
+! #		ldap
+  #	}
+  
+  	#
+--- 530,536 ----
+  	#  LDAP servers do not.
+  	#
+  #	Auth-Type LDAP {
+! 		ldap
+  #	}
+  
+  	#

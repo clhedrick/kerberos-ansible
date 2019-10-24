@@ -1,0 +1,21 @@
+#!/bin/bash
+
+HOST=`hostname`
+
+if klist -k -t /etc/krb5.keytab | grep "credserv/$HOST" >/dev/null; then
+  # principal is there. nothing to do
+  echo ok
+  exit
+fi
+
+export KRB5CCNAME=/tmp/credtemp$$
+kinit -k -t /etc/krb5.keytab host/$HOST
+
+# will fail if it exists. that's ok
+ipa service-add credserv/$HOST >/dev/null 2>&1
+
+ipa-getkeytab -p credserv/$HOST -k /etc/krb5.keytab >/dev/null 2>&1
+
+kdestroy
+
+echo changed
