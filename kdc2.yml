@@ -77,7 +77,8 @@
      command: /usr/libexec/platform-python -c "import ipaserver.plugins;n=ipaserver.plugins.__file__;print(n[0:len(n)-11])"
      register: plugindir
      changed_when: false
-   
+     check_mode: false
+
    - name: rutgers ipa customization
      copy: src=kdc-data/usr/lib/python/site-packages/ipaserver/plugins/rutgers.py  dest={{plugindir.stdout}}rutgers.py owner=root mode=0644
      notify: restart httpd     
@@ -90,6 +91,7 @@
          script: kdc-data/credkeytab
          register: credkeytab_result
          changed_when: "not credkeytab_result.stdout.startswith('ok')"
+         ignore_errors: "{{ ansible_check_mode }}"
        - name: anonymous keytable
          copy: src=kdc-data/etc/krb5.anonymous.keytab dest=/etc/krb5.anonymous.keytab owner=root mode=0600
        - name: credserv installation

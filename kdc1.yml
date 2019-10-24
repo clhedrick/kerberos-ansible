@@ -3,7 +3,7 @@
 - hosts: krb1.cs.rutgers.edu krb2.cs.rutgers.edu krb4.cs.rutgers.edu
 
   become: true
-  become_method: su
+#  become_method: su
   environment:
     PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
   tasks:

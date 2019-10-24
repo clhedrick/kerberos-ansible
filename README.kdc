@@ -1,16 +1,20 @@
+kdc1.yml, kdc2.yml, and kdc-data mostly automate installation of an IPA replica on Centos 8.
+
 See
 https://github.com/clhedrick/kerberos/wiki/Setting-up-new-server-(replica)-in-an-existing-system
 for instructions.
 
-Be careful where you put these files, as there is one very sensitive key table in the data area.
+For obvious reasons, two key tables are missing from copy in github
 
 I assume these files will be on one of the KDC's. You'll need to
-install ansible there.  At the moment it's in epel-
+install ansible there.  At the moment it's in epel. Here's how to
+install ansible. I assume it will move to the normal epel at some
+point, so I'd try it without "--enablerepo epel-playground" first.
 
 dnf update
 dnf install python3
 dnf -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 dnf install  --enablerepo epel-playground  ansible
 
-Don't use PIP. It will give you ansible but without sshpass. I
-haven't found another place to get it.
+Don't use PIP to install ansible. It will give you ansible but without
+sshpass. I haven't found another place to get it.
