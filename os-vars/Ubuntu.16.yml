@@ -11,7 +11,8 @@ gssd_param_in_systemd_file: yes
 gssd_param_in_sysconf: no
 gssd_param_name_sysconf: 
 use_gssproxy: no
-krb5_ccache: KEYRING:persistent:%{uid}
+# system supports KEYRING, but rpc.gssd doesn't
+krb5_ccache: /tmp/krb5cc_%{uid}
 has_ipaclient: yes
 ssh_service: ssh
 idmapd_service: idmapd
@@ -36,3 +37,4 @@ ldap_packages: nscd,ldap-utils,libnss-ldapd
 nslcd_service: nslcd
 nslcd_group: nslcd
 need_logind_restart: yes
+nfsv4_broken: true

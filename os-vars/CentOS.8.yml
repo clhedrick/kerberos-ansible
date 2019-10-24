@@ -1,53 +1,53 @@
 ---
-###
-### Caveats: krb is too old to handle OTP. you can do kerberos ssh, but not if
-### you get a password prompt.
-### need to do service nfs restart to get kerberized nfs to work
-###
+# may not work for 7.x before 7.3
 # /etc/krb5.conf starts with include dir
-krb5_conf_includedir: no
+krb5_conf_includedir: yes
+krb5_conf_spake: edwards25519
 # several things are done automatically by centos when krb5.keytab exists
-need_idmapd_start: yes
-need_securenfs_in_nfs: yes
-securenfs_in_nfs: SECURE_NFS
+need_idmapd_start: no
+need_securenfs_in_nfs: no
+securenfs_in_nfs:
 need_gssd_in_nfscommon: no
 need_gssd_start: no
-need_nfs_start: yes
+need_nfs_start: no
 # we use rpc.gssd -t 600. where is the -t 600 specified?
 gssd_param_in_script: no
-gssd_param_in_sysconf: yes
+gssd_param_in_etc_nfs: yes
+gssd_param_in_sysconf: no
 gssd_param_name_sysconf: RPCGSSDARGS
 # older versions don't use gssproxy
-use_gssproxy: no
-krb5_ccache: /tmp/krb5cc_%{uid}
-has_ipaclient: no
+use_gssproxy: yes
+gssd_use_plugin: yes
+krb5_ccache: KEYRING:persistent:%{uid}
+has_ipaclient: yes
 # names of services for systemctl start are different
 ssh_service: sshd
-idmapd_service: rpcidmapd
-gssd_service: rpcgssd
+idmapd_service: nfs-idmapd
+gssd_service: rpc-gssd
 # does kinit -n work?
-has_kinit_n: "{{ ansible_distribution_version | version_compare('7.4', '>=') }}"
+#has_kinit_n: "{{ ansible_distribution_version | version_compare('7.4', '>=') }}"
+has_kinit_n: yes
 # in /etc/nsswitch.conf, centos adds myhostname to hosts line
 has_myhostname: yes
 # in sshd_config, where is the sftp helper
 sftp_file: /usr/libexec/openssh/sftp-server
 # ubuntu lets us specify additions to pam config, so we can use their config program
 # with centos we have to edit the pam files ourselves
-use_pam_templates: yes
 has_pam_configs: no
+# new centos 8 pam generation
+has_authselect: yes
 ntp_name: ntpd
 ntpdate_name: ntpdate
 chrony_name: chronyd
 chrony_config: /etc/chrony.conf
+reinstall_python_libs: false
 need_nfs_server_start: no
-nfs_server_name: nfs-kernel-server
+nfs_server_name: nfs-server
 need_svcgssd_in_nks: no
 boot_packages: ipa-client,krb5-workstation,chrony,rsync,tcsh,zsh
 pkinit_package: krb5-pkinit
 ldap_packages: nss-pam-ldapd,nscd
 nslcd_service: nslcd
 nslcd_group: ldap
-ssh_noknown2: true
-ssh_nonewkeys: true
-ssh_nohostbased: true
-pam_location: /usr/lib64/security/
+
+

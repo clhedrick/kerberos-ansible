@@ -4,7 +4,7 @@
 # the script fails. But when you rerun it a start or restart is missed because
   # the thing that triggered it is already there.
 
-- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser wiselab lilab  mscs appsold localhost
+- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser wiselab stratosphere ahn1 aiart rll mscs rubik appsold localhost
 
   become: true
   environment:
@@ -65,7 +65,7 @@
    # For the moment limits is supported for all OSs, but setlimits onlly for Centos 7
    # Setlimits could be implemented for SLES and the most recent Ubuntu, but not Ubuntu 14
    - name: pam files for centos 7
-     when: ansible_distribution == 'CentOS' 
+     when: use_pam_templates|default('false')|bool
      template: src="{{ playbook_dir }}/kerberos-files/etc/pam.d/{{ item }}" dest=/etc/pam.d/{{ item }} mode=0644 owner=root
      with_items: ['password-auth-ac', 'system-auth-ac']
 
@@ -85,6 +85,14 @@
        - copy: src="{{ playbook_dir }}/kerberos-files/usr/local/etc/selinux/" dest=/usr/local/etc/selinux/ mode=600 owner=root
          notify:
           - load selinux
+
+   - meta: flush_handlers
+
+   - name: enable swap accounting if needed
+     when: setlimits is defined and need_boot_swapaccount is defined and need_boot_swapaccount
+     lineinfile: path=/etc/default/grub line='GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} swapaccount=1"'
+     notify:
+      - update grub
 
    - meta: flush_handlers
 
@@ -147,6 +155,13 @@
    - name: krb5.conf
      when: not ( nokrb5conf is defined and nokrb5conf )
      template: src="{{ playbook_dir }}/kerberos-files/etc/krb5.conf" dest=/etc/krb5.conf owner=root mode=0644
+   - name: remove kcm from /etc/krb5.conf.d/kcm_default_ccache
+     # only do this when we've updated krb5.conf.
+     # edir file rather than removing it so it doesn't get put back
+     when: not ( nokrb5conf is defined and nokrb5conf )
+     ini_file: path=/etc/krb5.conf.d/kcm_default_ccache create=no section=libdefaults option=default_ccache_name state=absent
+     # ok if file no there
+     failed_when: false
 
 #   - name: clear /var/lib/gssproxy/clients/krb5cc_%U
 #     shell: rm -f /var/lib/gssproxy/clients/krb5cc_*
@@ -183,8 +198,16 @@
      - restart nslcd     
 
 # nsswitch.conf is slightly different for ubuntu
+# this is not done for systems with authselect.
+# authselect controls nsswitch, so if we need to change it on authselect systems
+# change it that way. 
+# Currently the default is OK for authselect, so we don't change it at all for those systems
    - name: nsswitch.conf
+     when: not has_authselect|default('false')|bool
      template: src="{{ playbook_dir }}/kerberos-files/etc/nsswitch.conf" dest=/etc/nsswitch.conf owner=root mode=0644
+     notify: 
+     - maybe restart cron
+   - meta: flush_handlers
 
 # sshd_config is slightly different for ubuntu
    - name: /etc/ssh/sshd_config
@@ -210,11 +233,22 @@
 # so we can rebuild the pam files using their configurator. This is the file with our changes.
 # it's separate because we have to call the configurator if it changes
    - name: rukerb pam config
-     when: has_pam_configs|bool
+     when: has_pam_configs|default('false')|bool
      template: src="{{ playbook_dir }}/kerberos-files/usr/share/pam-configs/rukerb" dest=/usr/share/pam-configs/rukerb
      notify:
      - rebuild pam
    - meta: flush_handlers
+
+# new centos approach
+   - name: fix authselect configurations
+     when: has_authselect|default('false')|bool
+     include_tasks: "{{ playbook_dir }}/kerberos-files/scripts/authselect.yml"
+     loop:
+     - /usr/share/authselect/default/sssd/password-auth
+     - /usr/share/authselect/default/sssd/system-auth
+# this script can notify "update authselect"
+   - meta: flush_handlers
+
 
 # I don't think we need this now. It was really a one-time fix
 # fix protection for /run/renewdccs. original code in pam_reg_cc set it to 700, not 0700
@@ -256,7 +290,7 @@
 # only rpc.gssd really needs it, I create an addon systemd config file for rpc-gssd that defines
 # KRB5_CONFIG to include both the normal krb5.conf and a file pointing to the plugin.
    - name: wrap rpc.gssd to make sure it gets the right principal
-     when: ansible_service_mgr == "systemd"
+     when: gssd_use_plugin is defined
      block:
        - file: path=/usr/libexec/gssd-wrap.so state=absent
        - file: path=/etc/systemd/system/rpc-gssd.service.d state=directory mode=0755 owner=root
@@ -340,7 +374,10 @@
       service: name={{ nslcd_service }} state=restarted enabled=yes
     - name: daemon and gssd
       systemd: daemon_reload=yes name={{ gssd_service }} state=restarted
-
-      
-
-
+    - name: maybe restart cron
+      when: need_sssd_cron_restart is defined 
+      service: name={{ need_sssd_cron_restart }} state=restarted
+    - name: update authselect
+      command: authselect apply-changes
+    - name: update grub
+      command: update-grub

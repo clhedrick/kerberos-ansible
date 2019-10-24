@@ -80,7 +80,8 @@ AuthorizedKeysFile	.ssh/authorized_keys
 #KerberosUseKuserok yes
 
 # GSSAPI options
-{% if protected is defined and protected %}
+{% if protected is defined and protected == 'default' %}
+{% elif protected is defined and protected %}
 GSSAPIAuthentication no
 {% else %}
 GSSAPIAuthentication yes
@@ -177,12 +178,21 @@ KbdInteractiveAuthentication yes
 # without this -X fails if the system thinks it has IPv6
 AddressFamily inet
 
-{% if protected is defined and protected %}
+{% if protected is defined and protected == 'default'  %}
+
+match address 128.6.26.*,128.6.4.94,172.17.141.141,128.6.168.240,172.16.93.130,172.16.52.176/28 group coresysadmins
+GSSAPIAuthentication yes
+
+match group coresysadmins
+GSSAPIAuthentication no
+
+match all
+GSSAPIAuthentication yes
+
+{% elif protected is defined and protected %}
 #             staff      services   config         report        spock         lcsr VPN
 match address 128.6.26.*,128.6.4.94,172.17.141.141,128.6.168.240,172.16.93.130,172.16.52.176/28
 GSSAPIAuthentication yes
-
-
 
 {% endif %}
 

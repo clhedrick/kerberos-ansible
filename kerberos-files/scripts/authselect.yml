@@ -1,0 +1,48 @@
+   - name: fix pam files
+     block: 
+     - name: fix auth file account sss
+       lineinfile:
+         path: "{{ item }}"
+         regexp: "account.*pam_sss.so"
+         line: "account     [default=bad success=1 user_unknown=ignore] pam_sss.so"
+       notify:
+        - update authselect
+
+
+     - name: fix auth file  block 1
+       blockinfile:
+         path: "{{ item }}"
+         marker: "# {mark} ANSIBLE MANAGED BLOCK 1"
+         insertafter: "account.*pam_sss.so"
+         block: |
+                {% if noacctmessage is defined %}
+                account     optional      pam_echo.so {{ noacctmessage}}
+                {% else %}
+                account     optional      pam_echo.so ****** If you believe you are entitled to an account on this system, go to https://services.cs.rutgers.edu/accounts
+                {% endif %}
+       notify:
+        - update authselect
+
+     - name: fix password-auth block 2
+       blockinfile: 
+         path: "{{ item }}"
+         marker: "# {mark} ANSIBLE MANAGED BLOCK 2"
+         insertafter: "session.*optional.*pam_sss.so"
+         block: |
+                session     optional      {{ pam_location|default('') }}pam_reg_cc.so usecollection {{ 'usedefaultname' if 'password-auth' in item else '' }}
+                {% if local_homedir is not defined or not local_homedir %}
+                session     optional      {{ pam_location|default('') }}pam_kmkhomedir.so {{ 'umask=' ~ homedir_umask if homedir_umask is defined else '' }}
+                {% else %}
+                session     optional      pam_mkhomedir.so {{ 'umask=' ~ homedir_umask if homedir_umask is defined else '' }}
+                {% endif %}
+                {% if nocommonmap is not defined or not nocommonmap %}
+                session     optional      {{ pam_location|default('') }}pam_kmkhomedir.so dir=/common/users/%u donefile=.cusmkdirdone
+                {% endif %}
+                {% if setlimits is defined %}
+                session     optional      pam_exec.so /usr/libexec/setlimits.sh 
+                {% endif %}
+                {% if clusterdata is defined %}
+                session     optional      pam_exec.so /usr/libexec/clusterdatamkdir.sh
+                {% endif %}
+       notify:
+        - update authselect

@@ -10,6 +10,7 @@ gssd_param_in_script: no
 gssd_param_in_systemd_file: yes
 gssd_param_in_sysconf: no
 gssd_param_name_sysconf: 
+gssd_use_plugin: yes
 use_gssproxy: no
 krb5_ccache: KEYRING:persistent:%{uid}
 has_ipaclient: yes
@@ -36,6 +37,16 @@ ldap_packages: nscd,ldap-utils,libnss-ldapd
 nslcd_service: nslcd
 nslcd_group: nslcd
 need_logind_restart: yes
+# need to delay sssd start to after network is alive; known bug
 need_sssd_timing_fix: yes
+# need to restart cron after changing sssd config
+#   name of service. it's different for centos and ubuntu
+need_sssd_cron_restart: cron
+nfsv4_broken: true
+need_boot_swapaccount: true
+
+
+
+
 
 

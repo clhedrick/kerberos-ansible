@@ -9,17 +9,29 @@ LOGIN=`getent passwd "$PAM_USER" | cut -d: -f3`
 # must read the value to commit them
 
 # if user is in /etc/passwd it is a system user. no limit
-if ! getent -s files passwd "$PAM_USER"; then
+if ! (getent -s files passwd "$PAM_USER" || groups "$PAM_USER" | grep '\bslide\b') > /dev/null; then
   if test -n "$XDG_SESSION_ID"; then
     systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" CPUAccounting=yes
   fi
-  if ! (groups "$PAM_USER" | grep '\bno-mem-limit\b' >/dev/null) ; then
+# people with no limit still get 50% of memory
+  if (groups "$PAM_USER" | grep '\bno-mem-limit\b' >/dev/null) ; then
+{% if himemorylimit is defined %}
+   LIMIT={{ himemorylimit }}
+{% else %}
+   LIMIT=`vmstat -s | grep "total memory" | awk '{print rshift($1,1) "K"}'`
+{% endif %}
+  else
+   # on big machines the limit is smaller, though
+   # there's a default of 50% of memory. On small machines
+   # both if's set 50%
    # limit is 1/2 of phys mem. use right shift so it stays integer
 {% if memorylimit is defined %}
    LIMIT={{ memorylimit }}
 {% else %}
    LIMIT=`vmstat -s | grep "total memory" | awk '{print rshift($1,1) "K"}'`
 {% endif %}
+  fi
+
    # need to do this to create the slice and turn on memory accounting
    systemctl set-property --runtime "user-${LOGIN}.slice" MemoryLimit=$LIMIT
    echo $LIMIT > /sys/fs/cgroup/memory/user.slice/user-${LOGIN}.slice/memory.memsw.limit_in_bytes   
@@ -27,6 +39,14 @@ if ! getent -s files passwd "$PAM_USER"; then
    cat /sys/fs/cgroup/memory/user.slice/user-${LOGIN}.slice/memory.limit_in_bytes > /dev/null
    cat /sys/fs/cgroup/memory/user.slice/user-${LOGIN}.slice/memory.memsw.limit_in_bytes > /dev/null
    systemctl set-property --runtime "user-${LOGIN}.slice" CPUShares=100
+
+{% if memoryreserve is defined %}
+   # memoryreserve in M, vmstat gives K
+   PHYSMEM=`vmstat -s | grep "total memory" | awk '{print int($1 / 1024)}'`
+   PHYSLIMIT=$((PHYSMEM - {{memoryresrve}} ))
+   systemctl set-property --runtime "user.slice" MemoryLimit=${PHYSLIMIT}M
+{% endif %}
+
 {% if nvidialimit is defined %}
 
    # device limits seem to apply to the session, not the user, though if you
@@ -47,7 +67,7 @@ if ! getent -s files passwd "$PAM_USER"; then
    fi
 
 {% endif %}
-  fi
+
 fi
 
 exit 0

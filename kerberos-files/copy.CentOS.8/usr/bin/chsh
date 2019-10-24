@@ -1,0 +1,103 @@
+#!/bin/bash
+#Change shell for kerberos system
+#by Hanz Makmur
+
+USER="`whoami`"
+
+for argu in "$@"; do
+  shift
+  #echo "curr arg = $1"
+  case "$argu" in
+      "--shell"|"-s")
+	  set -- "$@" "-s $1"
+	  ;;
+      "--list-shells"|"-l")
+	  set -- "$@" "-l"
+          ;;
+      "--help"|"-u"|"-h")
+	  set -- "$@" "-u"
+          ;;
+      "--version"|"-v")
+	  set -- "$@" "-v"
+          ;;
+  esac
+done
+
+
+while getopts s:luv opts; do
+   case ${opts} in
+      s)
+	   newshell=`echo "${OPTARG}" | awk '{print $1}'`
+	   ;;
+      l) 
+	   list=1 
+	   ;;
+      u) 
+	   help=1 
+	   ;;
+      v | help ) 
+	   version=1 
+	   ;;
+      *)
+	   exit 1
+	   ;;
+   esac
+done
+
+#list
+if [ $list ];
+then
+    echo "Available shells: "
+    cat /etc/shells
+    exit
+fi
+
+#help
+if [ $help ];
+then
+    cat <<EOF
+Usage:
+ chsh [options]
+
+Options:
+ -s, --shell <shell>  specify login shell
+ -l, --list-shells    print list of shells and exit
+
+ -u, --help     display this help and exit
+ -v, --version  output version information and exit
+
+For more details see chsh(1).
+EOF
+    exit
+fi
+#
+
+if [ $version ];
+then
+    cat <<EOF
+chsh for kerberos system v.1.0.0
+EOF
+    exit
+fi
+
+#read new shell
+if [ -z $newshell ] ;  
+then
+    echo Changing shell for $USER
+    echo -n "shell [$SHELL]: " 
+    read newshell
+fi
+  
+if grep -s "^$newshell"'$' /etc/shells >/dev/null 2>&1
+then
+    #shell change
+
+    if [[ ! -z $newshell ]] ;  
+    then
+	# verify shell exist and change it
+	/bin/ipa user-mod $USER --shell=$newshell
+	exit
+    fi
+else
+    echo chsh: invalid shell. Use -l to see list of available shell
+fi

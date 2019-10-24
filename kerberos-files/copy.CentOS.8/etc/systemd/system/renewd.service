@@ -1,0 +1,12 @@
+[Unit]
+Description=Kerberos Credentials Automatic Rewewal
+After=syslog.target network.target named.service
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/renewd
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

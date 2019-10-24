@@ -12,7 +12,9 @@ PATH=/usr/bin:/bin
 ANONCC=KEYRING:session:`id -u`:$$
 
 {% if has_kinit_n and (nokrb5conf is not defined or not nokrb5conf) %}
-KRB5CCNAME="$ANONCC" kinit -n >/dev/null
+# no way to keep pem file up to date, so safe to use kgetcred
+#KRB5CCNAME="$ANONCC" kinit -n >/dev/null
+KRB5CCNAME="$ANONCC" kgetcred -a >/dev/null
 {% else %}
 KRB5CCNAME="$ANONCC" kgetcred -a >/dev/null
 {% endif %}

@@ -12,7 +12,7 @@
 #   normally a dictionary. Try ansible-playbook -v to see what is actually put in the variable
 #   Register is needed to get the data for the changed_when 
 
-- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser localhost wiselab lilab mscs appsold localhost
+- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser localhost wiselab stratosphere ahn1 mscs aiart rll rubik  appsold localhost
   become: true
   environment:
     PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
@@ -170,6 +170,12 @@
    - name: krb5.conf
      when: not has_ipaclient|bool
      template: src="{{ playbook_dir }}/kerberos-files/etc/krb5.conf" dest=/etc/krb5.conf owner=root mode=0644
+   - name: remove kcm from /etc/krb5.conf.d/kcm_default_ccache
+     # only do this when we've updated krb5.conf. for ipa clients it's in kerberos.yml
+     when: not has_ipaclient|bool
+     ini_file: path=/etc/krb5.conf.d/kcm_default_ccache create=no section=libdefaults option=default_ccache_name state=absent
+     # ok if file no there
+     failed_when: false
    - name: /etc/sssd/sssd.conf
      template: src="{{ playbook_dir }}/kerberos-files/etc/sssd/sssd.conf" dest=/etc/sssd/sssd.conf mode=0600 owner=root
      notify: 
@@ -182,7 +188,11 @@
 #   didn't have sss. So do it here
 # nsswitch.conf is slightly different for ubuntu
    - name: nsswitch.conf
+     when: not has_authselect|default('false')|bool
      template: src="{{ playbook_dir }}/kerberos-files/etc/nsswitch.conf" dest=/etc/nsswitch.conf owner=root mode=0644
+     notify: 
+     - maybe restart cron
+   - meta: flush_handlers
 
 # capture ssh keys if needed 
    - name: get host keys from remote
@@ -274,7 +284,6 @@
        state: present
      notify:
        - restart gssd
-   - meta: flush_handlers
 
    - name: /etc/systemd/system/rpc-gssd.service.d/time.conf
      when: gssd_param_in_systemd_file is defined
@@ -282,6 +291,18 @@
      notify:
        - daemon reload
        - restart gssd
+
+   - name: /etc/nfs.conf
+     when: gssd_param_in_etc_nfs is defined
+     ini_file:
+       path: /etc/nfs.conf
+       section: gssd
+       option: rpc-timeout
+       value: "600"
+       no_extra_spaces: yes
+     notify:
+       - restart gssd
+
    - meta: flush_handlers
 
 # nfs server for ubuntu
@@ -333,3 +354,6 @@
     - name: restart systemd-logind
       when: need_logind_restart is defined and need_logind_restart
       service: name=systemd-logind state=restarted
+    - name: maybe restart cron
+      when: need_sssd_cron_restart is defined 
+      service: name={{ need_sssd_cron_restart }} state=restarted

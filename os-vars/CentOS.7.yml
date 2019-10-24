@@ -15,6 +15,7 @@ gssd_param_in_sysconf: yes
 gssd_param_name_sysconf: RPCGSSDARGS
 # older versions don't use gssproxy
 use_gssproxy: yes
+gssd_use_plugin: yes
 krb5_ccache: KEYRING:persistent:%{uid}
 has_ipaclient: yes
 # names of services for systemctl start are different
@@ -30,6 +31,7 @@ has_myhostname: yes
 sftp_file: /usr/libexec/openssh/sftp-server
 # ubuntu lets us specify additions to pam config, so we can use their config program
 # with centos we have to edit the pam files ourselves
+use_pam_templates: yes
 has_pam_configs: no
 ntp_name: ntpd
 ntpdate_name: ntpdate
