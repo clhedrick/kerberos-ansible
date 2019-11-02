@@ -83,6 +83,10 @@
      copy: src=kdc-data/usr/lib/python/site-packages/ipaserver/plugins/rutgers.py  dest={{plugindir.stdout}}rutgers.py owner=root mode=0644
      notify: restart httpd     
 
+   - name: dhcp ipa commands
+     copy: src=kdc-data/usr/lib/python/site-packages/ipaserver/plugins/dhcp.py  dest={{plugindir.stdout}}dhcp.py owner=root mode=0644
+     notify: restart httpd     
+
    - meta: flush_handlers
 
    - name: credserv
