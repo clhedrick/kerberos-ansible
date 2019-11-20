@@ -1,1 +1,2 @@
-/common /etc/auto.master.d/auto.common intr,bg{{',vers=3' if nfsv4_broken is defined else ''}}
+/common /etc/auto.master.d/auto.common intr,bg,vers=3
+

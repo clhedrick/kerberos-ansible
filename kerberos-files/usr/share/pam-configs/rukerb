@@ -13,7 +13,7 @@ Session:
 {% if mkhomedir is defined and mkhomedir %}
 	optional	pam_mkhomedir.so
 {% endif %}
-{% if nocommonmap is not defined or not nocommonmap %}
+{% if ( nocommonmap is not defined or not nocommonmap ) and nocommonmkdir is not defined %}
 	optional	/usr/lib64/security/pam_kmkhomedir.so dir=/common/users/%u donefile=.cusmkdirdone
 {% endif %}
 {% if setlimits is defined and setlimits %}
