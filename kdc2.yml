@@ -1,0 +1,160 @@
+---
+
+- hosts: krb1.cs.rutgers.edu krb2.cs.rutgers.edu krb4.cs.rutgers.edu
+
+  become: true
+  environment:
+    PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"
+  tasks:
+
+# installing ipa modifies chrony. put it back
+   - name: chrony config
+     blockinfile: 
+       path: /etc/chrony.conf
+       block: |
+         server 128.6.1.1 iburst
+         initstepslew 30 128.6.1.1
+       insertbefore: BOF
+     notify: restart chrony
+   - name: chrony config
+     lineinfile: path=/etc/chrony.conf regexp="^pool" state=absent
+     notify: restart chrony
+
+   - name: fix sssd 1
+     lineinfile: path=/etc/sssd/sssd.conf regexp="^access_provider *=" line="access_provider = simple"
+     notify: restart sssd
+   - name: fix sssd 2
+     lineinfile: path=/etc/sssd/sssd.conf regexp="^simple_allow_groups *=" line="simple_allow_groups = coresysadmins" insertafter="^access_provider *="
+     notify: restart sssd
+# also in kdc1, but we might want to update pam, so recheck here
+   - name: setup pam_mkhomedir
+     lineinfile: path=/etc/pam.d/sshd insertafter="session.*pam_selinux.so" line="session    optional     pam_mkhomedir.so"
+   - name: sudoers
+     copy: src=kdc-data/etc/sudoers.d/lcsr dest=/etc/sudoers.d/lcsr owner=root mode=600
+   - name: sshd
+     blockinfile:
+        path: /etc/ssh/sshd_config
+        block: |
+          # Kerberos server special: only allow password
+          AuthenticationMethods keyboard-interactive
+
+          match user syncipt
+          AuthenticationMethods gssapi-with-mic
+
+          match address {{kdc_ips}}
+          AuthenticationMethods gssapi-with-mic keyboard-interactive
+          match all
+     notify: restart sshd
+
+   - meta: flush_handlers
+
+   - name: skinit
+     copy: src=kdc-data/usr/bin/skinit dest=/usr/bin/skinit owner=root mode=0755
+
+   - name: cron backup
+     cron: name=ipabackup hour=23 minute=0 job="/sbin/ipa-backup --online --data > /usr/local/scripts/ipa-backup.log 2>&1"
+   - name: cron prune backups 
+     cron: name=prunebackups hour=23 minute=59 job="find /var/lib/ipa/backup/ -maxdepth 1 -ctime +14 -exec rm -rf '{}' ';'"
+   - name: cron prune krb5cc
+     cron: name=pruneccs hour=23 minute=32 job="find /tmp -name 'krb5cc_*' -ctime +0 | xargs rm"
+
+   - name: cron update firewall
+     block:
+       - name: cron hosts2fw
+         copy: src=kdc-data/usr/local/libexec/hosts2fw dest=/usr/local/libexec/hosts2fw owner=root mode=0755
+       - cron: name=hosts2fw minute="2-53/10" job="/usr/local/libexec/hosts2fw > /var/log/hosts2fw.log 2>&1"
+
+   - name: cron checkgssproxy
+     block: 
+       - name: cron checkgssproxy job
+         copy: src=kdc-data/usr/local/libexec/checkgssproxy.sh dest=/usr/local/libexec/checkgssproxy.sh owner=root mode=0755
+       - cron: name=checkgssproxy minute="3" job="/usr/local/libexec/checkgssproxy.sh > /var/log/checkgssproxy.log 2>&1"
+
+   - name: cron backup dse.ldif
+     cron: name=backupdse minute="3-59/5" job="cp --backup /etc/dirsrv/slapd-CS-RUTGERS-EDU/dse.ldif /var/lib/ipa/backup/dse.ldif"
+
+   - name: find plugins location
+     command: /usr/libexec/platform-python -c "import ipaserver.plugins;n=ipaserver.plugins.__file__;print(n[0:len(n)-11])"
+     register: plugindir
+     changed_when: false
+     check_mode: false
+
+   - name: rutgers ipa customization
+     copy: src=kdc-data/usr/lib/python/site-packages/ipaserver/plugins/rutgers.py  dest={{plugindir.stdout}}rutgers.py owner=root mode=0644
+     notify: restart httpd     
+
+   - name: install dhcp server
+     package: name="dhcp-server"
+   - name: working directory for dhcp.py call of dhcp server
+     file: path=/var/lib/dhcptest state=directory owner=root mode=01777
+   - name: dhcp ipa commands
+     copy: src=kdc-data/usr/lib/python/site-packages/ipaserver/plugins/dhcp.py  dest={{plugindir.stdout}}dhcp.py owner=root mode=0644
+     notify: restart httpd     
+
+   - meta: flush_handlers
+
+   - name: credserv
+     block:
+       - name: add credserv key table
+         script: kdc-data/credkeytab
+         register: credkeytab_result
+         changed_when: "not credkeytab_result.stdout.startswith('ok')"
+         ignore_errors: "{{ ansible_check_mode }}"
+       - name: anonymous keytable
+         copy: src=kdc-data/etc/krb5.anonymous.keytab dest=/etc/krb5.anonymous.keytab owner=root mode=0600
+       - name: credserv installation
+         copy: src=kdc-data/etc/krb5.conf.credserv dest=/etc/krb5.conf.credserv owner=root mode=0644
+         notify: restart credserv
+       - copy: src=kdc-data/etc/krb5.tgt.keytab dest=/etc/krb5.tgt.keytab owner=root mode=0600
+         notify: restart credserv
+       - copy: src=kdc-data/usr/sbin/credserv dest=/usr/sbin/credserv owner=root mode=0755
+         notify: restart credserv
+       - copy: src=kdc-data/etc/systemd/system/credserv.service dest=/etc/systemd/system/credserv.service owner=root mode=0644
+         notify: reload and restart credserv
+       - template: src=kdc-data/etc/krb5.conf.d/credserv.conf dest=/etc/krb5.conf.d/credserv.conf owner=root mode=0644
+         notify: restart credserv
+       - copy: src=kdc-data/usr/bin/kgetcred dest=/usr/bin/kgetcred owner=root mode=04755
+       - copy: src=kdc-data/usr/lib64/security/pam_kgetcred.so dest=/usr/lib64/security/pam_kgetcred.so owner=root mode=0755
+       - lineinfile: path=/etc/pam.d/crond insertafter="session.*pam_loginuid.so" line="session    optional   pam_kgetcred.so"
+
+   - meta: flush_handlers
+
+   - name: pwqual files
+     block:
+       - name: pwqual
+         copy: src=kdc-data/etc/krb5.conf.d/pwqal.conf dest=/etc/krb5.conf.d/pwqal.conf owner=root mode=0644
+         notify: restart kdc
+       - copy: src=kdc-data/usr/local/etc/strengthcheck.sqlite dest=/usr/local/etc/strengthcheck.sqlite owner=root mode=0644
+         notify: restart kdc
+       - copy: src=kdc-data/usr/local/libexec/strength.so dest=/usr/local/libexec/strength.so owner=root mode=0755
+         notify: restart kdc
+
+   - meta: flush_handlers
+
+# do this on services and dns
+#   - name: radius setup
+#     block:
+#       - name: radius
+#         package: name="freeradius,freeradius-krb5,freeradius-ldap,freeradius-utils,patch"
+#       - file: path=/etc/raddb/mods-enabled/ldap src=/etc/raddb/mods-available/ldap state=link
+#         notify: restart radiusd
+#       - patch: src=kdc-data/radius.diff basedir=/ backup=yes
+#         notify: restart radiusd
+
+  handlers:
+   - name: restart sssd
+     service: name=sssd state=restarted
+   - name: restart httpd
+     service: name=httpd state=restarted
+   - name: reload and restart credserv
+     systemd: daemon_reload=yes name=credserv state=restarted enabled=yes
+   - name: restart credserv
+     service: name=credserv state=restarted enabled=yes
+   - name: restart kdc
+     service: name=krb5kdc state=restarted  
+   - name: restart radiusd
+     service: name=radiusd state=restarted enabled=yes
+   - name: restart sshd
+     service: name=sshd state=restarted
+   - name: restart chrony
+     service: name=chronyd state=restarted enabled=yes

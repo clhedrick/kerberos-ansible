@@ -1,0 +1,10 @@
+##LCSR Changes
+##over ride defaults
+Defaults>root   shell_noargs , \
+                preserve_groups , \
+                ! env_reset , \
+                ignore_dot , \
+                ! requiretty
+
+##LCSR Specific Group
+%coresysadmins  ALL = (root) NOPASSWD: ALL

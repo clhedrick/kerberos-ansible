@@ -1,0 +1,11 @@
+[Unit]
+Description=Kerberos Credentials Daemon - server for kgetcred
+After=krb5kdc.service
+
+[Service]
+Environment=KRB5_CONFIG=/etc/krb5.conf.credserv
+Type=forking
+ExecStart=/usr/sbin/credserv
+
+[Install]
+WantedBy=multi-user.target
