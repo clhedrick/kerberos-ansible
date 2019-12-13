@@ -9,7 +9,7 @@ LOGIN=`getent passwd "$PAM_USER" | cut -d: -f3`
 # must read the value to commit them
 
 # if user is in /etc/passwd it is a system user. no limit
-if ! (getent -s files passwd "$PAM_USER" || groups "$PAM_USER" | grep '\bslide\b') > /dev/null; then
+if ! (getent -s files passwd "$PAM_USER" || groups "$PAM_USER" | egrep '( |^)slide( |$)') > /dev/null; then
   if test -n "$XDG_SESSION_ID"; then
     systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" CPUAccounting=yes
   fi
