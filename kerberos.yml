@@ -292,14 +292,23 @@
    - name: wrap rpc.gssd to make sure it gets the right principal
      when: gssd_use_plugin is defined
      block:
+       - copy: src="{{ playbook_dir }}/kerberos-files/usr/lib/ccselect_nfs.so" dest=/usr/lib/ccselect_nfs.so mode=0755 owner=root
+         notify:
+            - daemon and gssd
        - file: path=/usr/libexec/gssd-wrap.so state=absent
        - file: path=/etc/systemd/system/rpc-gssd.service.d state=directory mode=0755 owner=root
        - file: path=/etc/systemd/system/rpc-gssd.service.d/gssd-wrap.conf state=absent
        - copy: src="{{ playbook_dir }}/kerberos-files/etc/krb5.conf.gssd" dest=/etc/krb5.conf.gssd mode=0644 owner=root
        - copy: src="{{ playbook_dir }}/kerberos-files/etc/systemd/system/rpc-gssd.service.d/gss-krb.conf" dest=/etc/systemd/system/rpc-gssd.service.d/gss-krb.conf mode=0644 owner=root
          notify:
-           - daemon and gssd
+            - daemon and gssd
      
+   - name: ubuntu 18 patched rpc.gssd
+     when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == "18.04"
+     copy: src="{{ playbook_dir }}/kerberos-files/usr/sbin/rpc.gssd.u18" dest=/usr/sbin/rpc.gssd mode=0755 owner=root
+     notify:
+        - daemon and gssd
+
 #       - copy: src="{{ playbook_dir }}/kerberos-files/usr/libexec/gssd-wrap.so" dest=/usr/libexec/gssd-wrap.so mode=0755 owner=root
 #         notify:
 #           - daemon and gssd

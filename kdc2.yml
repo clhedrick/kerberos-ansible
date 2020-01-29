@@ -1,3 +1,6 @@
+
+
+
 ---
 
 - hosts: krb1.cs.rutgers.edu krb2.cs.rutgers.edu krb4.cs.rutgers.edu
@@ -51,6 +54,8 @@
    - name: skinit
      copy: src=kdc-data/usr/bin/skinit dest=/usr/bin/skinit owner=root mode=0755
 
+   - name: /usr/local/scripts
+     file: path=/usr/local/scripts state=directory owner=root mode=0755
    - name: cron backup
      cron: name=ipabackup hour=23 minute=0 job="/sbin/ipa-backup --online --data > /usr/local/scripts/ipa-backup.log 2>&1"
    - name: cron prune backups 
@@ -100,13 +105,13 @@
          register: credkeytab_result
          changed_when: "not credkeytab_result.stdout.startswith('ok')"
          ignore_errors: "{{ ansible_check_mode }}"
-       - name: anonymous keytable
-         copy: src=kdc-data/etc/krb5.anonymous.keytab dest=/etc/krb5.anonymous.keytab owner=root mode=0600
+#       - name: anonymous keytable
+#         copy: src=kdc-data/etc/krb5.anonymous.keytab dest=/etc/krb5.anonymous.keytab owner=root mode=0600
        - name: credserv installation
          copy: src=kdc-data/etc/krb5.conf.credserv dest=/etc/krb5.conf.credserv owner=root mode=0644
          notify: restart credserv
-       - copy: src=kdc-data/etc/krb5.tgt.keytab dest=/etc/krb5.tgt.keytab owner=root mode=0600
-         notify: restart credserv
+#       - copy: src=kdc-data/etc/krb5.tgt.keytab dest=/etc/krb5.tgt.keytab owner=root mode=0600
+#         notify: restart credserv
        - copy: src=kdc-data/usr/sbin/credserv dest=/usr/sbin/credserv owner=root mode=0755
          notify: restart credserv
        - copy: src=kdc-data/etc/systemd/system/credserv.service dest=/etc/systemd/system/credserv.service owner=root mode=0644
@@ -126,6 +131,7 @@
          notify: restart kdc
        - copy: src=kdc-data/usr/local/etc/strengthcheck.sqlite dest=/usr/local/etc/strengthcheck.sqlite owner=root mode=0644
          notify: restart kdc
+       - file: path=/usr/share/dict/words.pwd state=touch owner=root mode=0644
        - copy: src=kdc-data/usr/local/libexec/strength.so dest=/usr/local/libexec/strength.so owner=root mode=0755
          notify: restart kdc
 
