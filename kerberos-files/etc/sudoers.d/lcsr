@@ -11,10 +11,13 @@ Defaults>root   shell_noargs , \
 
 ##LCSR Specific Group
 %slide  ALL = (root) NOPASSWD: ALL
+{% if sudogroups is defined or sudousers is defined %}
 {% if sudogroups is defined %}
 %{{ sudogroups|replace(",", ",%") }} ALL = (root) NOPASSWD: ALL
-{% elif grouplist is defined %}
-%{{ grouplist|replace(",", ",%") }} ALL = (root) NOPASSWD: ALL
+{% endif %}
+{% if sudousers is defined %}
+{{ sudousers }} ALL = (root) NOPASSWD: ALL
+{% endif %}
 {% elif groupsuffix is defined %}
 %slide-{{ groupsuffix }}  ALL = (root) NOPASSWD: ALL
 {% endif %}

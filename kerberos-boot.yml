@@ -12,7 +12,7 @@
 #   normally a dictionary. Try ansible-playbook -v to see what is actually put in the variable
 #   Register is needed to get the data for the changed_when 
 
-- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser localhost wiselab stratosphere ahn1 mscs aiart rll rubik  appsold localhost
+- hosts: testhosts dresden dresdesk faculty research staff services ilab studentvms grad apps coredev special researchuser localhost wiselab stratosphere ahn1 bekris mscs aiart rll rubik  appsold ccstar localhost
   become: true
   environment:
     PATH: "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin"

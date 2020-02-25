@@ -4,7 +4,7 @@
 # the script fails. But when you rerun it a start or restart is missed because
   # the thing that triggered it is already there.
 
-- hosts: testhosts dresden faculty research staff services ilab studentvms grad apps coredev special researchuser wiselab stratosphere ahn1 aiart rll mscs rubik appsold localhost
+- hosts: testhosts dresden dresdesk faculty research staff services ilab studentvms grad apps coredev special researchuser wiselab stratosphere ahn1 aiart rll mscs rubik bekris appsold ccstar localhost
 
   become: true
   environment:
