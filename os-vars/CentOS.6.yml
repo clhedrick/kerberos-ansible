@@ -26,7 +26,7 @@ ssh_service: sshd
 idmapd_service: rpcidmapd
 gssd_service: rpcgssd
 # does kinit -n work?
-has_kinit_n: "{{ ansible_distribution_version | version_compare('7.4', '>=') }}"
+has_kinit_n: no
 # in /etc/nsswitch.conf, centos adds myhostname to hosts line
 has_myhostname: yes
 # in sshd_config, where is the sftp helper

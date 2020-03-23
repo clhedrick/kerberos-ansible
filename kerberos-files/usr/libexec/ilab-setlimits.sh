@@ -57,6 +57,7 @@ if ! (getent -s files passwd "$PAM_USER" || groups "$PAM_USER" | egrep '( |^)sli
       DEVNO=`expr $LOGIN % 8`
       NUMDEV={{ nvidialimit }}
       systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DevicePolicy=closed
+      systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DeviceAllow="/dev/loop-control rw"
       systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DeviceAllow="/dev/nvidiactl rw"
       systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DeviceAllow="/dev/nvidia-uvm rw"
       systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DeviceAllow="/dev/nvidia-uvm-tools rw"
@@ -64,6 +65,9 @@ if ! (getent -s files passwd "$PAM_USER" || groups "$PAM_USER" | egrep '( |^)sli
         IND=`expr $DEV % 8`
         systemctl set-property --runtime "session-${XDG_SESSION_ID}.scope" DeviceAllow="/dev/nvidia$IND rw"
       done
+      # this allows singularity to create new /dev/loopN devices
+      echo "b 7:* rwm" > /sys/fs/cgroup/devices/user.slice/user-${LOGIN}.slice/session-${XDG_SESSION_ID}.scope/devices.allow
+      cat /sys/fs/cgroup/devices/user.slice/user-${LOGIN}.slice/session-${XDG_SESSION_ID}.scope/devices.list > /dev/null
    fi
 
 {% endif %}
