@@ -19,6 +19,8 @@ case "$DISTRO" in
 *) echo We only support Ubuntu and Centos; exit 1 ;;
 esac
 
+OSVERSION=`grep '^VERSION_ID=' /etc/os-release | cut -d\" -f2`
+
 SERVER=services.cs.rutgers.edu
 
 # We'll do a more careful check of hostname in the web service
@@ -37,6 +39,12 @@ echo -e "\n***************\n"
 echo "Please verify the following:"
 echo "* Your computer must have a permanent hostname, registered in DNS."
 echo "* Your computer must have Python 2.6, 2.7, or 3.5+."
+echo "* Your computer must have curl installed."
+echo "* Your subnet must be authorized to access http://config.lcsr.rutgers.edu/git"
+echo "  You can test this by doing"
+echo "    git clone http://config.lcsr.rutgers.edu/git/ansible-hosts"
+echo "* Ideally, your host should exist in the IPA database. If not, there"
+echo "  could be a long delay during this process."
 echo "* For Ubuntu, your time must be synchronized by ntp or similar."
 echo "In addition, the conversion won't be very useful unless your"
 echo "usernames are Univerity Netids, although that can be fixed later."
@@ -56,6 +64,7 @@ if (which klist && which kinit) >/dev/null 2>&1 ; then
      kdestroy
   fi
 fi
+
 
 # if keytable isn't valid, get a new one
 if ! $KTOK ; then
@@ -171,18 +180,19 @@ fi
 
 elif test "$DISTRO" = "CentOS" ; then
 
-if ! yum -q -y install ansible git ; then
-echo -e "\n***************\n"
-echo "yum failed"
-echo
-exit 1
-fi
+    if ! yum install -y python3 python3-pip || !  pip3 install ansible ; then
+	echo -e "\n***************\n"
+	echo "installation of python3 or ansible failed"
+	echo
+	exit 1
+    fi
 
 fi
 
 # /etc/ansible/hosts has parameters that define who can login
 # They are created based on the answers given by the user above.
 
+mkdir -p /etc/ansible
 cat > /etc/ansible/hosts <<EOF
 # This should have one line beginning with "localhost." The only thing you are likely to 
 # change are the specifications of who can login.
@@ -207,7 +217,7 @@ fi
 
 # now do the real work. 
 
-if ! ansible-pull -f -U https://github.com/clhedrick/kerberos-ansible.git kerberos-boot.yml ; then
+if ! ansible-pull -f -U http://config.lcsr.rutgers.edu/git/systems-playbooks kerberos-boot.yml ; then
 echo -e "\n***************\n"
 echo "There are two steps to the final software installation. The first failed. We won't"
 echo "run the second step until the first one works."
@@ -215,7 +225,7 @@ echo
 exit 1
 fi
 
-if ! ansible-pull -f -U https://github.com/clhedrick/kerberos-ansible.git kerberos.yml ; then
+if ! ansible-pull -f -U http://config.lcsr.rutgers.edu/git/systems-playbooks kerberos.yml ; then
 echo -e "\n***************\n"
 echo "There final step in setup failed."
 echo
@@ -228,10 +238,10 @@ echo "You can run this script again if you need to. However there are simpler"
 echo "alternatives."
 echo 
 echo "To update the Rutgers Kerberos software or setup, run"
-echo "  ansible-pull -U https://github.com/clhedrick/kerberos-ansible.git kerberos.yml"
+echo "  ansible-pull -U http://config.lcsr.rutgers.edu/git/systems-playbooks kerberos.yml"
 echo "Other Kerberos software will be updated by the normal package manager."
 echo
 echo "If you need to change who can login, edit /etc/ansible/hosts and then run"
-echo "  ansible-pull -f -U https://github.com/clhedrick/kerberos-ansible.git kerberos.yml"
+echo "  ansible-pull -f -U http://config.lcsr.rutgers.edu/git/systems-playbooks kerberos.yml"
 echo 
 echo "(If you forget this information, just look at the end of the kerberize script.)"
