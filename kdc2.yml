@@ -124,6 +124,17 @@
 
    - meta: flush_handlers
 
+   - name: fix otpd error handling
+     copy: src=kdc-data/etc/systemd/system/ipa-otpd@.service.d/ dest=/etc/systemd/system/ipa-otpd@.service.d/
+     notify: daemon reload
+
+   - meta: flush_handlers
+
+   - name: utilities for checking status of server
+     copy: src=kdc-data/usr/local/sbin/ dest=/usr/local/sbin/
+   - name: check status cron
+     cron: name=checkstatus minute="4-55/10" job="/usr/local/sbin/testkdc > /tmp/kdctest 2>&1"
+
    - name: pwqual files
      block:
        - name: pwqual
@@ -136,6 +147,9 @@
          notify: restart kdc
 
    - meta: flush_handlers
+
+   - name: doto
+     debug: msg="add ldap update for guacammole if krb1"
 
 # do this on services and dns
 #   - name: radius setup
@@ -154,6 +168,8 @@
      service: name=httpd state=restarted
    - name: reload and restart credserv
      systemd: daemon_reload=yes name=credserv state=restarted enabled=yes
+   - name: daemon reload
+     systemd: daemon_reload=yes
    - name: restart credserv
      service: name=credserv state=restarted enabled=yes
    - name: restart kdc
