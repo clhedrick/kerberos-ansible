@@ -1,0 +1,30 @@
+#!/bin/bash
+
+export KRB5_CONFIG=/etc/krb5.conf.test
+export KRB5CCNAME=/tmp/krb5cc_test_$$
+
+kinit -k -t /etc/krb5.keytab  host/`hostname`@CS.RUTGERS.EDU
+
+ok="0"
+if test "$?" != "0"; then
+    ok="1"
+    echo `date` failed keytab test >> /var/log/failures
+else
+    echo ok
+fi
+
+ldapsearch -Y GSSAPI uid=admin uid |& grep "# numEntries" > /dev/null 2>&1
+if test "$?" != "0"; then
+    ok="1"
+    echo `date` failed ldap test >> /var/log/failures
+else
+    echo ok
+fi
+
+if test "$ok" = "0"; then
+    /usr/local/sbin/enable
+else
+    /usr/local/sbin/disable
+fi
+
+rm /tmp/krb5cc_test_$$

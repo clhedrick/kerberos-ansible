@@ -1,0 +1,15 @@
+#!/bin/sh
+
+udp=`nft -a list table filter | grep "@lcsr udp" | awk '{print $(NF)}'`
+if test -n "$udp"; then
+    echo udp rule already there
+else
+    nft add rule filter INPUT ip saddr @lcsr udp dport '{88,464,123}' counter accept
+fi
+
+tcp=`nft -a list table filter | grep "@lcsr tcp" | awk '{print $(NF)}'`
+if test -n "$tcp"; then
+    echo tcp rule already there
+else
+    nft add rule filter INPUT ip saddr @lcsr tcp dport '{88,464,749,755,756,389,636,80,443,12388,464,123}' counter accept
+fi

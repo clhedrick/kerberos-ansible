@@ -1,0 +1,16 @@
+#!/bin/sh
+
+udp=`nft -a list table filter | grep "@lcsr udp" | awk '{print $(NF)}'`
+if test -n "$udp"; then
+    nft delete rule filter INPUT handle "$udp"
+else
+    echo udp rule not there
+fi
+
+tcp=`nft -a list table filter | grep "@lcsr tcp" | awk '{print $(NF)}'`
+if test -n "$tcp"; then
+    nft delete rule filter INPUT handle "$tcp"
+else
+    echo tcp rule not there
+fi
+

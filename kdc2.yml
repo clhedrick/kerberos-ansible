@@ -148,8 +148,8 @@
 
    - meta: flush_handlers
 
-   - name: doto
-     debug: msg="add ldap update for guacammole if krb1"
+   - name: todo
+     debug: msg="add ldap update for guacammole if krb1, /usr/libexec/updateguac; fix renew time in /var/kerberos/krb5kdc/kdc.conf to 365d"
 
 # do this on services and dns
 #   - name: radius setup
