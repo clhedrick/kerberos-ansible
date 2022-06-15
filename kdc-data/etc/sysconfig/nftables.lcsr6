@@ -1,0 +1,5 @@
+      set lcsr6 {
+      	  type ipv6_addr
+	  elements = { 2620:0:d60:ac1a::3e }
+      }
+

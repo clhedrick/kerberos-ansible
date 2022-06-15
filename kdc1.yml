@@ -13,6 +13,7 @@
      fail: msg="hostname must be krb?.cs.rutgers.edu"
 
    - name: check idm:DL1
+     when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8"
      command: dnf -q module list --enabled idm:DL1
 # suppress warning about using dnf. the dnf ansible command can't do this
      args:
@@ -22,14 +23,21 @@
      check_mode: false
      failed_when: false
    - name: switch to DL1
-     when: DL1installed.rc != 0
+     when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8" and DL1installed.rc != 0
      block: 
       - command: yum -y module enable idm:DL1
       - command: yum -y distro-sync
+
    - name: install server software
+     when: ansible_distribution == "RedHat" and ansible_distribution_major_version == "8"
      command: yum -y module install idm:DL1/server
      args:
        creates: /usr/sbin/ipa-replica-install
+
+   - name: install server software
+     when: ansible_distribution == "RedHat" and ansible_distribution_major_version != "8"
+     dnf: name=ipa-server
+
    - name: disable selinux
      lineinfile: path=/etc/selinux/config regexp="^SELINUX=" line="SELINUX=permissive"
      notify: set permissive
@@ -39,6 +47,11 @@
    - name: nftables.staff
      copy: src=kdc-data/etc/sysconfig/nftables.staff dest=/etc/sysconfig/nftables.staff owner=root mode=600
      notify: restart nftables
+   - name: nftables.staff6
+     copy: src=kdc-data/etc/sysconfig/nftables.staff6 dest=/etc/sysconfig/nftables.staff6 owner=root mode=600
+     notify: restart nftables
+   - name: nftables.lcsr6
+     copy: src=kdc-data/etc/sysconfig/nftables.lcsr6 dest=/etc/sysconfig/nftables.lcsr6 force=no owner=root mode=600
    - name: nftables.lcsr
      copy: src=kdc-data/etc/sysconfig/nftables.lcsr dest=/etc/sysconfig/nftables.lcsr force=no owner=root mode=600
    - name: nftables.conf
@@ -70,7 +83,7 @@
      copy: src=kdc-data/etc/sudoers.d/lcsr dest=/etc/sudoers.d/lcsr owner=root mode=600
 
    - name: reboot warning
-     when: DL1installed.rc != 0
+     when: ansible_distribution == "RedHat" and ansible_distribution_major_version != "8" or DL1installed.rc != 0
      debug: msg="please reboot the target host now"
 
   handlers:

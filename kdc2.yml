@@ -131,7 +131,7 @@
    - meta: flush_handlers
 
    - name: utilities for checking status of server
-     copy: src=kdc-data/usr/local/sbin/ dest=/usr/local/sbin/
+     copy: src=kdc-data/usr/local/sbin/ dest=/usr/local/sbin/ mode=preserve
    - name: check status cron
      cron: name=checkstatus minute="4-55/10" job="/usr/local/sbin/testkdc > /tmp/kdctest 2>&1"
 
@@ -146,20 +146,37 @@
        - copy: src=kdc-data/usr/local/libexec/strength.so dest=/usr/local/libexec/strength.so owner=root mode=0755
          notify: restart kdc
 
+   - name: set renew time to a year
+     lineinfile: path=/var/kerberos/krb5kdc/kdc.conf regexp="^ *max_renewable_life *= *14d" line="  max_renewable_life = 365d"
+     notify: restart kdc
+
    - meta: flush_handlers
 
-   - name: todo
-     debug: msg="add ldap update for guacammole if krb1, /usr/libexec/updateguac; fix renew time in /var/kerberos/krb5kdc/kdc.conf to 365d"
-
-# do this on services and dns
-#   - name: radius setup
-#     block:
-#       - name: radius
-#         package: name="freeradius,freeradius-krb5,freeradius-ldap,freeradius-utils,patch"
-#       - file: path=/etc/raddb/mods-enabled/ldap src=/etc/raddb/mods-available/ldap state=link
-#         notify: restart radiusd
-#       - patch: src=kdc-data/radius.diff basedir=/ backup=yes
-#         notify: restart radiusd
+   - name: set up guacamole update for krb1
+     when: ansible_fqdn == 'krb1.cs.rutgers.edu'
+     block:
+       - name: get ansible version if any
+         shell: /usr/local/bin/ansible --version | grep '^ansible' | egrep -o '[0-9.]+'
+         register: ansinstallvers
+       - name: test
+         when: ansinstallvers.rc != 0 or ansinstallvers.stdout_lines[0] is version('2.10' , '<')
+         fail: msg="run the ansibleSetup role"
+       - name: make sure /etc/ansible exists
+         file: path=/etc/ansible state=directory owner=root mode=0755
+       - name: clone hosts
+         ansible.builtin.git:
+            repo: http://config.lcsr.rutgers.edu/git/ansible-hosts
+            dest: /etc/ansible/.hosts
+       - name: symlink to /etc/ansible/hosts
+         ansible.builtin.file:
+            src: /etc/ansible/.hosts/hosts
+            dest: /etc/ansible/hosts
+            state: link
+            force: yes
+       - name: install guac update script   
+         copy: src=kdc-data/usr/libexec/updateguac dest=/usr/libexec/updateguac owner=root mode=0755
+       - name: cron for guac update
+         cron: name=guac-update hour=4 minute=23 job="/usr/libexec/updateguac > /tmp/updateguac.log 2>&1"
 
   handlers:
    - name: restart sssd

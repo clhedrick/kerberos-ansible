@@ -1,0 +1,7 @@
+      set staff6 {
+      	  type ipv6_addr
+	  flags interval
+	  elements = { 2620:0:d60:ac1a::0/64,
+		       2620:0:d60:ac04::5e }
+      }
+

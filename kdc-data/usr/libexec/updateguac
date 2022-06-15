@@ -1,0 +1,17 @@
+#!/bin/sh
+
+export PATH=/usr/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+cd /etc/ansible/.hosts
+git pull
+
+ansible ilab,grad --list-hosts | awk '{print $1}' | grep -v '^hosts' |  sort > /tmp/needed
+
+export KRB5CCNAME=/tmp/krb5cc$$
+kinit -k -t /etc/krb5.keytab host/`hostname`@CS.RUTGERS.EDU
+
+ldapsearch -Y GSSAPI -b cn=guac,dc=cs,dc=rutgers,dc=edu objectclass=guacConfigGroup | grep hostname= | cut -d= -f2 | sort -u > /tmp/have
+diff /tmp/have /tmp/needed --suppress-common-lines | awk '{if ($0 !~ "^<|^>") next; print "dn: cn=" substr($0,3) ",cn=guac,dc=cs,dc=rutgers,dc=edu"; if ( $0 ~ "^<") print "changetype:delete\n" ; else { print "changetype:add\nobjectClass: guacConfigGroup\nobjectClass: groupOfNames\nguacConfigProtocol: rdp\nguacConfigParameter: hostname=" substr($0,3) "\nguacConfigParameter: color-depth=24\nguacConfigParameter: username=\${GUAC_USERNAME}\nguacConfigParameter: password=\${GUAC_PASSWORD}\nguacConfigParameter: initial-program=/usr/local/sbin/guac-session\nguacConfigParameter: ignore-cert=true\nseeAlso: cn=login-ilab,cn=groups,cn=accounts,dc=cs,dc=rutgers,dc=edu\n"}}' > /tmp/changes
+
+ldapmodify -Y GSSAPI < /tmp/changes
+kdestroy
