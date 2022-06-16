@@ -136,6 +136,15 @@
    - name: check status cron
      cron: name=checkstatus minute="4-55/10" job="/usr/local/sbin/testkdc > /tmp/kdctest 2>&1" state=absent
 
+# actual script is in /usr/local/sbin, done above
+   - name: sysstat package, for iostat
+     package: name=sysstat
+   - name: getstats service spec
+     copy: src=kdc-data/etc/systemd/system/getstats@.service dest=/etc/systemd/system/getstats@.service owner=root mode=0644
+   - name: getstats socket spec
+     copy: src=kdc-data/etc/systemd/system/getstats.socket dest=/etc/systemd/system/getstats.socket owner=root mode=0644
+     notify: restart getstats socket
+
    - name: pwqual files
      block:
        - name: pwqual
@@ -198,3 +207,5 @@
      service: name=sshd state=restarted
    - name: restart chrony
      service: name=chronyd state=restarted enabled=yes
+   - name: restart getstats socket
+     systemd: daemon_reload=yes name=getstats.socket state=reloaded enabled=yes
