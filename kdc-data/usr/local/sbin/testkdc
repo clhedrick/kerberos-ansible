@@ -2,6 +2,7 @@
 
 export KRB5_CONFIG=/etc/krb5.conf.test
 export KRB5CCNAME=/tmp/krb5cc_test_$$
+export PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 kinit -k -t /etc/krb5.keytab  host/`hostname`@CS.RUTGERS.EDU
 

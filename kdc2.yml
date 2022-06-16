@@ -132,8 +132,9 @@
 
    - name: utilities for checking status of server
      copy: src=kdc-data/usr/local/sbin/ dest=/usr/local/sbin/ mode=preserve
+# for the moment don't do this. I'm not sure it's needed or the right way to do it
    - name: check status cron
-     cron: name=checkstatus minute="4-55/10" job="/usr/local/sbin/testkdc > /tmp/kdctest 2>&1"
+     cron: name=checkstatus minute="4-55/10" job="/usr/local/sbin/testkdc > /tmp/kdctest 2>&1" state=absent
 
    - name: pwqual files
      block:
