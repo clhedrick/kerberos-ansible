@@ -162,6 +162,10 @@
 
    - meta: flush_handlers
 
+# this fires with a timer, but must be run the first time
+   - name: enable ipa-ccache-sweep
+     service: name=ipa-ccache-sweep.service enabled=yes state=started
+
    - name: set up guacamole update for krb1
      when: ansible_fqdn == 'krb1.cs.rutgers.edu'
      block:
